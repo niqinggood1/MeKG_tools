@@ -51,9 +51,9 @@ NER: 链接:https://pan.baidu.com/s/16TPSMtHean3u9dJSXF9mTw  密码:shwh
 - tqdm
 
 ## 简述
-medical_re.py  医学关系抽取
-medical_ner.py 命名实体识别
-medical_cws.py 医学分词(较少使用，可用jieba替代)
+medical_re.py  医学关系抽取  
+medical_ner.py 命名实体识别  
+medical_cws.py 医学分词(较少使用，可用jieba替代)  
 
 ## 模型使用
 
