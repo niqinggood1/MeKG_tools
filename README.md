@@ -16,14 +16,13 @@ Index
 
 <!-- /TOC -->
 
-
+原始代码：https://github.com/king-yyf/CMeKG_tools/tree/main  
 ## cmekg工具
 
 [CMeKG网站](https://cmekg.pcl.ac.cn/)
 
 中文医学知识图谱CMeKG
 CMeKG（Chinese Medical Knowledge Graph）是利用自然语言处理与文本挖掘技术，基于大规模医学文本数据，以人机结合的方式研发的中文医学知识图谱。
-
 CMeKG 中主要模型工具包括 医学文本分词，医学实体识别和医学关系抽取。这里是三种工具的代码、模型和使用方法。
 
 ### 模型下载
@@ -32,9 +31,7 @@ CMeKG 中主要模型工具包括 医学文本分词，医学实体识别和医�
 
 RE：链接:https://pan.baidu.com/s/1cIse6JO2H78heXu7DNewmg  密码:4s6k
 
-
 NER: 链接:https://pan.baidu.com/s/16TPSMtHean3u9dJSXF9mTw  密码:shwh
-
 
 分词：链接:https://pan.baidu.com/s/1bU3QoaGs2IxI34WBx7ibMQ  密码:yhek
 
