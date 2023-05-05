@@ -25,6 +25,11 @@ def load_vocab(vocab_file):
     return vocab
 
 
+# #file_path 中数据目测结构类似于
+# 我   o
+# 的   d-B
+# 笔   d-M
+# 记   d-E
 def load_file(file_path):
     contents = open(file_path, encoding='utf-8').readlines()
     text = []
@@ -58,7 +63,7 @@ def load_data(file_path, max_length, label_dic, vocab):
             label = label[0:(max_length - 2)]
 
         tokens_f = ['[CLS]'] + token + ['[SEP]']
-        label_f = ["<start>"] + label + ['<eos>']
+        label_f  = ["<start>"] + label + ['<eos>']
 
         input_ids = [int(vocab[i]) if i in vocab else int(vocab['[UNK]']) for i in tokens_f]
         label_ids = [label_dic[i] for i in label_f]

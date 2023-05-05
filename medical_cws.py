@@ -27,7 +27,7 @@ class config:
     # test_file = './data/test.txt'
     # medical_bert = './data/model_20'
     # vocab_file = './data/model_20/vocab.txt'
-    # save_model_dir = './data/model/'
+    save_model_dir = './data/model/'
     # medical_tool_model = './data/model/pytorch_model.pkl'  # 最终工具使用的模型
 
 
@@ -172,6 +172,8 @@ class medical_seg(object):
         op_file.close()
         print('处理完成！')
         print("results have been stored in {}".format(output_file))
+
+
 
 
 if __name__ == "__main__":

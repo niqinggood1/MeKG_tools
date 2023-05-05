@@ -5,8 +5,8 @@ from torch.autograd import Variable
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 import json
-from utils import load_vocab
-# from ner_constant import *
+from utils import load_vocab,get_f1
+
 
 # -*- coding: utf-8 -*-
 import torch
@@ -22,13 +22,12 @@ class config:
                16: "m-B", 17: "m-M", 18: "m-E", 19: "k-B",20: "k-M", 21: "k-E",
               22: "i-B", 23: "i-M", 24: "i-E", 25: "y-B", 26: "y-M", 27: "y-E", 28: "<pad>",29:"<start>", 30:"<eos>"}
 
+    train_file = './data/train_data.txt'
+    dev_file = './data/val_data.txt'
+    test_file = './data/test_data.txt'
+    vocab_file = './data/my_bert/vocab.txt'
 
-    # train_file = './data/train_data.txt'
-    # dev_file = './data/val_data.txt'
-    # test_file = './data/test_data.txt'
-    # vocab_file = './data/my_bert/vocab.txt'
-
-    # save_model_dir =  './data/model/'
+    save_model_dir =  './data/model/'
     # medical_tool_model = './data/model/model.pkl'
     max_length = 450
     batch_size = 1
@@ -44,7 +43,7 @@ class config:
 
 from model_ner import BERT_LSTM_CRF
 import os
-
+from utils import load_vocab, load_data, recover_label
 
 class medical_ner(object):
     def __init__(self,config ):
@@ -210,9 +209,166 @@ class medical_ner(object):
         print("结果保存至 {}".format(output_file))
 
 
+    def train(self):
+
+        from utils import load_vocab, load_data, recover_label,  save_model, load_model
+        import torch.optim as optim
+        import tqdm
+
+        vocab_file  = self.config.vocab_file
+        max_length  = self.config.max_length
+        train_file  = self.config.train_file
+        max_length  = self.config.max_length
+        epochs      = self.config.epochs
+        tagset_size = self.config.tagset_size
+        use_cuda    = self.config.use_cuda
+        device      = self.config.device
+
+
+        vocab = load_vocab(vocab_file)
+        vocab_reverse = {v: k for k, v in vocab.items()}
+
+        print('max_length', max_length)
+        l2i_dic       = self.config.l2i_dic
+        batch_size    = self.config.batch_size
+        dev_file      = self.config.dev_file
+        test_file     = self.config.test_file
+        save_model_dir= self.config.save_model_dir
+
+        train_data = load_data(train_file, max_length=max_length, label_dic=l2i_dic, vocab=vocab)
+        train_ids = torch.LongTensor([temp.input_id for temp in train_data[1500:]])
+        train_masks = torch.LongTensor([temp.input_mask for temp in train_data[1500:]])
+        train_tags = torch.LongTensor([temp.label_id for temp in train_data[1500:]])
+        train_lenghts = torch.LongTensor([temp.lenght for temp in train_data[1500:]])
+        train_dataset = TensorDataset(train_ids, train_masks, train_tags, train_lenghts)
+        train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
+
+        dev_data = load_data(dev_file, max_length=max_length, label_dic=l2i_dic, vocab=vocab)
+        dev_ids = torch.LongTensor([temp.input_id for temp in dev_data[:1500]])
+        dev_masks = torch.LongTensor([temp.input_mask for temp in dev_data[:1500]])
+        dev_tags = torch.LongTensor([temp.label_id for temp in dev_data[:1500]])
+        dev_lenghts = torch.LongTensor([temp.lenght for temp in dev_data[:1500]])
+        dev_dataset = TensorDataset(dev_ids, dev_masks, dev_tags, dev_lenghts)
+        dev_loader = DataLoader(dev_dataset, shuffle=True, batch_size=batch_size)
+
+        test_data = load_data(test_file, max_length=max_length, label_dic=l2i_dic, vocab=vocab)
+        test_ids = torch.LongTensor([temp.input_id for temp in test_data])
+        test_masks = torch.LongTensor([temp.input_mask for temp in test_data])
+        test_tags = torch.LongTensor([temp.label_id for temp in test_data])
+        test_lenghts = torch.LongTensor([temp.lenght for temp in test_data])
+
+        test_dataset = TensorDataset(test_ids, test_masks, test_tags, test_lenghts)
+        test_loader = DataLoader(test_dataset, shuffle=False, batch_size=batch_size)
+
+        model = BERT_LSTM_CRF('./data/my_bert', tagset_size, 768, 200, 2,
+                              dropout_ratio=0.5, dropout1=0.5, use_cuda=use_cuda)
+
+        if self.config.use_cuda:
+            model.to( self.device )
+
+        optimizer = getattr(optim, 'Adam')
+        optimizer = optimizer(model.parameters(), lr=0.000005, weight_decay=0.00005)
+
+        best_f = -100
+        model_name = save_model_dir + '0518' + str(float('%.3f' % best_f)) + ".pkl"
+        print(model_name)
+
+        for epoch in range(epochs):
+            print('epoch: {}，train'.format(epoch))
+            for i, train_batch in enumerate(tqdm(train_loader)):
+                sentence, masks, tags, lengths = train_batch
+
+                sentence, masks, tags, lengths = Variable(sentence), Variable(masks), Variable(tags), Variable(lengths)
+
+                if use_cuda:
+                    sentence = sentence.to(device)
+                    masks = masks.to(device)
+                    tags = tags.to(device)
+                model.train()
+                optimizer.zero_grad()
+                loss = model.neg_log_likelihood_loss(sentence, masks, tags)
+                loss.backward()
+                optimizer.step()
+
+            print('epoch: {}，train loss: {}'.format(epoch, loss.item()))
+            p, r, f = self.evaluate(model, dev_loader)
+
+            if f > best_f:
+                best_f = f
+                _, _, _ = self.evaluate_test(model, test_loader, loss.item())
+                model_name = save_model_dir + 'new' + str(float('%.3f' % best_f)) + ".pkl"
+                torch.save(model.state_dict(), model_name)
+    ######测试函数
+    def evaluate(self,model, dev_loader):
+        model.eval()
+        pred = []
+        gold = []
+        print('evaluate')
+        with torch.no_grad():
+            for i, dev_batch in enumerate(dev_loader):
+                sentence, masks, tags , lengths = dev_batch
+                sentence, masks, tags, lengths  = Variable(sentence), Variable(masks), Variable(tags), Variable(lengths)
+                if self.config.use_cuda:
+                    sentence = sentence.to(self.config.device)
+                    masks = masks.to(self.config.device)
+                    tags = tags.to(self.config.device)
+
+                predict_tags = model(sentence, masks)
+                loss = model.neg_log_likelihood_loss(sentence, masks, tags)
+
+                pred.extend([t for t in predict_tags.tolist()])
+                gold.extend([t for t in tags.tolist()])
+
+            pred_label,gold_label = recover_label(pred, gold, self.config.l2i_dic,self.config.i2l_dic)
+            print('dev loss {}'.format(loss.item()))
+            pred_label_1 = [t[1:] for t in pred_label]
+            gold_label_1 = [t[1:] for t in gold_label]
+            p, r, f = get_f1(gold_label_1,pred_label_1)
+            print('p: {}，r: {}, f: {}'.format(p, r, f))
+            return p, r, f
+
+    def evaluate_test(self,medel, test_loader, dev_f):
+        medel.eval()
+        pred = []
+        gold = []
+        print('test')
+        with torch.no_grad():
+            for i, dev_batch in enumerate(test_loader):
+                sentence, masks, tags, lengths = dev_batch
+                sentence, masks, tags, lengths = Variable(sentence), Variable(masks), Variable(tags), Variable(lengths)
+                if self.config.use_cuda:
+                    sentence = sentence.to(self.config.device)
+                    masks = masks.to(self.config.device)
+                    tags = tags.to(self.config.device)
+                predict_tags = medel(sentence, masks)
+
+                pred.extend([t for t in predict_tags.tolist()])
+                gold.extend([t for t in tags.tolist()])
+
+            pred_label, gold_label = recover_label(pred, gold, self.config.l2i_dic, self.config.i2l_dic)
+            pred_label_2 = [t[1:] for t in pred_label]
+            gold_label_2 = [t[1:] for t in gold_label]
+            fw = open('data/predict_result' + str(float('%.3f' % dev_f)) + 'bert.txt', 'w')
+            for i in pred_label_2:
+                for j in range(len(i) - 1):
+                    fw.write(i[j])
+                    fw.write(' ')
+                fw.write(i[len(i) - 1])
+                fw.write('\n')
+            acc, p, r, f = get_f1(gold_label_2, pred_label_2)
+            print('p: {}，r: {}, f: {}'.format(p, r, f))
+        return p, r, f
+
+
 if __name__ == "__main__":
-    sentence = "抑郁症受遗传的影响。在抑郁症青少年中，约25%～33%的家庭有一级亲属的发病史，是没有抑郁症青少年家庭发病的2倍。"
-    my_pred = medical_ner(config)
-    res = my_pred.predict_sentence(sentence)
-    print("---")
-    print(res)
+    print(config.l2i_dic[''])
+
+    # model = medical_ner(config)
+    # model.train()
+
+
+    # sentence = "抑郁症受遗传的影响。在抑郁症青少年中，约25%～33%的家庭有一级亲属的发病史，是没有抑郁症青少年家庭发病的2倍。"
+    # model = medical_ner(config)
+    # res = model.predict_sentence(sentence)
+    # print("---")
+    # print(res)
