@@ -50,12 +50,17 @@ NER: 链接:https://pan.baidu.com/s/16TPSMtHean3u9dJSXF9mTw  密码:shwh
 - time
 - tqdm
 
+## 简述
+medical_re.py  医学关系抽取
+medical_ner.py 命名实体识别
+medical_cws.py 医学分词(较少使用，可用jieba替代)
+
 ## 模型使用
 
 ### 医学关系抽取
+使用脚本 medical_re.py 
 
 **依赖文件**
-
 -  pytorch_model.bin : 医学文本预训练的 BERT-base model
 -  vocab.txt
 -  config.json
@@ -78,18 +83,17 @@ model_re/train_example.json 是训练文件示例
 
 - 使用
 
-```python
-import medical_re
-medical_re.load_schema()
-model4s, model4po = medical_re.load_model()
-
-text = '据报道称，新冠肺炎患者经常会发热、咳嗽，少部分患者会胸闷、乏力，其病因包括: 1.自身免疫系统缺陷\n2.人传人。'  # content是输入的一段文字
-res = medical_re.get_triples(text, model4s, model4po)
-print(json.dumps(res, ensure_ascii=False, indent=True))
 ```
-
+训练： 参考run_train    函数
+提取， 参考extract_data 函数
+load_schema(PATH_SCHEMA)
+model4s, model4po = load_model( PATH_SCHEMA,  PATH_MODEL )
+text        = "右肺恶性肿瘤 患者男，63岁，因“右侧肺癌术后2年，气喘1周”入院。治疗过程：患者入院后完善相关检查，拟转本院南院行气管支架置入术"
+res         = get_triples(text,tokenizer,max_seq_len,num_p,id2predicate,\
+                              model4s,model4po)
+print(res)
+```
 - 执行结果
-
 ```
 [
  {
@@ -144,18 +148,14 @@ print(json.dumps(res, ensure_ascii=False, indent=True))
 python3 train_ner.py
 
 
-**使用示例**
-
-
+**使用进行提取**
+参考 medical_ner.py 中的predict_sentence函数
 medical_ner 类提供两个接口测试函数
-
 - predict_sentence(sentence): 测试单个句子，返回:{"实体类别"：“实体”},不同实体以逗号隔开
 - predict_file(input_file, output_file): 测试整个文件
 文件格式每行待提取实体的句子和提取出的实体{"实体类别"：“实体”},不同实体以逗号隔开
 
 ```python
-from run import medical_ner
-
 #使用工具运行
 my_pred=medical_ner()
 #根据提示输入单句：“高血压病人不可食用阿莫西林等药物”
@@ -166,20 +166,15 @@ my_pred.predict_sentence("".join(sentence.split()))
 my_pred.predict_file("my_test.txt","outt.txt")
 ```
 
-### 医学文本分词
+### 医学文本分词(此处跳过)
 
-调整的参数和模型在cws_constant.py中
+调整的参数和模型在cws_constant.py中，意义不是特别大，用jieba分词更简单
 
 **训练**
-
 python3 train_cws.py
-
-
 **使用示例**
 
-
 medical_cws 类提供两个接口测试函数
-
 - predict_sentence(sentence): 测试单个句子，返回:{"实体类别"：“实体”},不同实体以逗号隔开
 - predict_file(input_file, output_file): 测试整个文件
 文件格式每行待提取实体的句子和提取出的实体{"实体类别"：“实体”},不同实体以逗号隔开
