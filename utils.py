@@ -1,7 +1,4 @@
 # coding: utf-8
-from cws_constant import *
-
-
 
 class InputFeatures(object):
     def __init__(self, text, label, input_id, label_id, input_mask, length):

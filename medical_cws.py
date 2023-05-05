@@ -6,15 +6,39 @@ from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 
 from utils import load_vocab
-from cws_constant import *
+# from cws_constant import *
+
+class config:
+    l2i_dic = {"S": 0, "B": 1, "M": 2, "E": 3, "<pad>": 4, "<start>": 5, "<eos>": 6}
+    i2l_dic = {0: "S", 1: "B", 2: "M", 3: "E", 4: "<pad>", 5: "<start>", 6: "<eos>"}
+    # 超参
+    max_length = 150
+    batch_size = 24
+    epochs = 10
+    tagset_size = len(l2i_dic)
+    use_cuda = False
+
+    ner_model   = './model/medical_cws'
+    newpath     = './model/medical_cws/pytorch_model.pkl'
+    vocabpath   = './model/medical_cws/vocab.txt'
+    # 路径
+    # train_file = './data/train.txt'
+    # dev_file = './data/dev.txt'
+    # test_file = './data/test.txt'
+    # medical_bert = './data/model_20'
+    # vocab_file = './data/model_20/vocab.txt'
+    # save_model_dir = './data/model/'
+    # medical_tool_model = './data/model/pytorch_model.pkl'  # 最终工具使用的模型
+
 
 from model_cws import BERT_LSTM_CRF
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 class medical_seg(object):
-    def __init__(self):
-        self.NEWPATH = '/Users/yangyf/workplace/model/medical_cws/pytorch_model.pkl'
+    def __init__(self,config):
+        self.config  = config
+        self.NEWPATH = config.newpath #'./model/medical_cws/pytorch_model.pkl'
         if torch.cuda.is_available():
             self.device = torch.device("cuda", 0)
             self.use_cuda = True
@@ -22,13 +46,13 @@ class medical_seg(object):
             self.device = torch.device("cpu")
             self.use_cuda = False
 
-        self.vocab = load_vocab('/Users/yangyf/workplace/model/medical_cws/vocab.txt')
+        self.vocab = load_vocab( config.vocabpath )
         self.vocab_reverse = {v: k for k, v in self.vocab.items()}
 
-        self.model = BERT_LSTM_CRF('/Users/yangyf/workplace/model/medical_cws', tagset_size, 768, 200, 2,
-                              dropout_ratio=0.5, dropout1=0.5, use_cuda=use_cuda)
+        self.model = BERT_LSTM_CRF(  config.ner_model, config.tagset_size, 768, 200, 2,
+                              dropout_ratio=0.5, dropout1=0.5, use_cuda=self.use_cuda)
 
-        if use_cuda:
+        if self.use_cuda:
             self.model.cuda()
 
     def from_input(self, input_str):
@@ -41,9 +65,9 @@ class medical_seg(object):
         raw_text.append(text)
         cur_len = len(text)
         # raw_textid = [self.vocab[x] for x in text] + [0] * (max_length - cur_len)
-        raw_textid = [self.vocab[x] for x in text if self.vocab.__contains__(x)] + [0] * (max_length - cur_len)
+        raw_textid = [self.vocab[x] for x in text if self.vocab.__contains__(x)] + [0] * (self.config.max_length - cur_len)
         textid.append(raw_textid)
-        raw_textmask = [1] * cur_len + [0] * (max_length - cur_len)
+        raw_textmask = [1] * cur_len + [0] * (self.config.max_length - cur_len)
         textmask.append(raw_textmask)
         textlength.append([cur_len])
         textid = torch.LongTensor(textid)
@@ -65,9 +89,9 @@ class medical_seg(object):
                 cur_len = len(temptext)
                 raw_text.append(temptext)
 
-                tempid = [self.vocab[x] for x in temptext[:cur_len]] + [0] * (max_length - cur_len)
+                tempid = [self.vocab[x] for x in temptext[:cur_len]] + [0] * (self.config.max_length - cur_len)
                 textid.append(tempid)
-                textmask.append([1] * cur_len + [0] * (max_length - cur_len))
+                textmask.append([1] * cur_len + [0] * (self.config.max_length - cur_len))
                 textlength.append([cur_len])
 
         textid = torch.LongTensor(textid)
@@ -77,7 +101,7 @@ class medical_seg(object):
 
     def recover_to_text(self, pred, raw_text):
         # 输入[标签list]和[原文list],batch为1
-        pred = [i2l_dic[t.item()] for t in pred[0]]
+        pred = [self.config.i2l_dic[t.item()] for t in pred[0]]
         pred = pred[:len(raw_text)]
         pred = pred[1:-1]
         raw_text = raw_text[1:-1]
@@ -109,7 +133,7 @@ class medical_seg(object):
             sentence, masks, lengths = dev_batch
             batch_raw_text = raw_text[i]
             sentence, masks, lengths = Variable(sentence), Variable(masks), Variable(lengths)
-            if use_cuda:
+            if self.config.use_cuda:
                 sentence = sentence.cuda()
                 masks = masks.cuda()
 
@@ -135,7 +159,7 @@ class medical_seg(object):
             sentence, masks, lengths = dev_batch
             batch_raw_text = raw_text[i]
             sentence, masks, lengths = Variable(sentence), Variable(masks), Variable(lengths)
-            if use_cuda:
+            if self.config.use_cuda:
                 sentence = sentence.cuda()
                 masks = masks.cuda()
 
@@ -152,7 +176,7 @@ class medical_seg(object):
 
 if __name__ == "__main__":
 
-    meg = medical_seg()
+    meg = medical_seg(config)
     # meg.predict_file('./data/raw_text.txt', './data/out_raw.txt')
     res = meg.predict_sentence("肾上腺由皮质和髓质两个功能不同的内分泌器官组成，皮质分泌肾上腺皮质激素，髓质分泌儿茶酚胺激素。")
     print(res)

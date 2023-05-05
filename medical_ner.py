@@ -6,24 +6,57 @@ from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 import json
 from utils import load_vocab
-from ner_constant import *
+# from ner_constant import *
+
+# -*- coding: utf-8 -*-
+import torch
+
+class config:
+    # tag-entity:{d:疾病 s:临床表现 b:身体 e:医疗设备 p:医疗程序 m:微生物类 k:科室 i:医学检验项目 y:药物}
+    l2i_dic = {"o": 0, "d-B": 1, "d-M": 2, "d-E": 3, "s-B": 4, "s-M": 5,"s-E": 6,
+               "b-B": 7, "b-M": 8, "b-E": 9, "e-B": 10, "e-M": 11, "e-E": 12, "p-B": 13, "p-M": 14, "p-E": 15, "m-B": 16,"m-M": 17,
+               "m-E": 18, "k-B": 19, "k-M": 20, "k-E": 21, "i-B": 22, "i-M": 23,"i-E": 24, "y-B": 25, "y-M": 26, "y-E": 27,"<pad>":28,"<start>": 29, "<eos>": 30}
+
+    i2l_dic = {0: "o", 1: "d-B", 2: "d-M", 3: "d-E", 4: "s-B", 5: "s-M",
+               6: "s-E", 7: "b-B", 8: "b-M", 9: "b-E", 10: "e-B", 11: "e-M", 12: "e-E",13:"p-B", 14:"p-M", 15:"p-E",
+               16: "m-B", 17: "m-M", 18: "m-E", 19: "k-B",20: "k-M", 21: "k-E",
+              22: "i-B", 23: "i-M", 24: "i-E", 25: "y-B", 26: "y-M", 27: "y-E", 28: "<pad>",29:"<start>", 30:"<eos>"}
+
+
+    # train_file = './data/train_data.txt'
+    # dev_file = './data/val_data.txt'
+    # test_file = './data/test_data.txt'
+    # vocab_file = './data/my_bert/vocab.txt'
+
+    # save_model_dir =  './data/model/'
+    # medical_tool_model = './data/model/model.pkl'
+    max_length = 450
+    batch_size = 1
+    epochs = 30
+    tagset_size = len(l2i_dic)
+    use_cuda = False
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    ner_model = './model/medical_ner'
+    newpath   = './model/medical_ner/model.pkl'
+    vocabpath = './model/medical_ner/vocab.txt'
+
+
 
 from model_ner import BERT_LSTM_CRF
 import os
 
 
 class medical_ner(object):
-    def __init__(self):
-        self.NEWPATH = '/Users/yangyf/workplace/model/medical_ner/model.pkl'
-        self.vocab = load_vocab('/Users/yangyf/workplace/model/medical_ner/vocab.txt')
-        self.vocab_reverse = {v: k for k, v in self.vocab.items()}
+    def __init__(self,config ):
+        self.config         = config
+        self.NEWPATH        = config.newpath
+        self.vocab          = load_vocab(config.vocabpath)
+        self.vocab_reverse  = {v: k for k, v in self.vocab.items()}
 
-        self.model = BERT_LSTM_CRF('/Users/yangyf/workplace/model/medical_ner', tagset_size, 768, 200, 2,
-                              dropout_ratio=0.5, dropout1=0.5, use_cuda=use_cuda)
-
-        if use_cuda:
-            self.model.to(device)
-
+        self.model          = BERT_LSTM_CRF(config.ner_model, config.tagset_size, 768, 200, 2,
+                              dropout_ratio=0.5, dropout1=0.5, use_cuda=config.use_cuda)
+        if config.use_cuda:
+            self.model.to(config.device)
     def from_input(self, input_str):
         raw_text = []
         textid = []
@@ -33,9 +66,9 @@ class medical_ner(object):
         raw_text.append(text)
         cur_len = len(text)
         # raw_textid = [self.vocab[x] for x in text] + [0] * (max_length - cur_len)
-        raw_textid = [self.vocab[x] for x in text if self.vocab.__contains__(x)] + [0] * (max_length - cur_len)
+        raw_textid = [self.vocab[x] for x in text if self.vocab.__contains__(x)] + [0] * (self.config.max_length - cur_len)
         textid.append(raw_textid)
-        raw_textmask = [1] * cur_len + [0] * (max_length - cur_len)
+        raw_textmask = [1] * cur_len + [0] * (self.config.max_length - cur_len)
         textmask.append(raw_textmask)
         textlength.append([cur_len])
         textid = torch.LongTensor(textid)
@@ -100,20 +133,20 @@ class medical_ner(object):
         raw_text, test_ids, test_masks, test_lengths = self.from_input(sentence)
         test_dataset = TensorDataset(test_ids, test_masks, test_lengths)
         test_loader = DataLoader(test_dataset, shuffle=False, batch_size=1)
-        self.model.load_state_dict(torch.load(self.NEWPATH, map_location=device))
+        self.model.load_state_dict(torch.load(self.NEWPATH, map_location=self.config.device))
         self.model.eval()
 
         for i, dev_batch in enumerate(test_loader):
             sentence, masks, lengths = dev_batch
             batch_raw_text = raw_text[i]
             sentence, masks, lengths = Variable(sentence), Variable(masks), Variable(lengths)
-            if use_cuda:
-                sentence = sentence.to(device)
-                masks = masks.to(device)
+            if self.config.use_cuda:
+                sentence = sentence.to(self.config.device)
+                masks = masks.to(self.config.device)
 
             predict_tags = self.model(sentence, masks)
             predict_tags.tolist()
-            predict_tags = [i2l_dic[t.item()] for t in predict_tags[0]]
+            predict_tags = [self.config.i2l_dic[t.item()] for t in predict_tags[0]]
             predict_tags = predict_tags[:len(batch_raw_text)]
             pred = predict_tags[1:-1]
             raw_text = batch_raw_text[1:-1]
@@ -144,15 +177,15 @@ class medical_ner(object):
             sentence, masks, lengths = dev_batch
             batch_raw_text = raw_text[i]
             sentence, masks, lengths = Variable(sentence), Variable(masks), Variable(lengths)
-            if use_cuda:
-                sentence = sentence.to(device)
-                masks = masks.to(device)
+            if self.config.use_cuda:
+                sentence = sentence.to(self.config.device)
+                masks = masks.to(self.config.device)
 
             predict_tags = self.model(sentence, masks)
             predict_tags.tolist()
             predict_tags = self.model(sentence, masks)
             predict_tags.tolist()
-            predict_tags = [i2l_dic[t.item()] for t in predict_tags[0]]
+            predict_tags = [self.config.i2l_dic[t.item()] for t in predict_tags[0]]
             predict_tags = predict_tags[:len(batch_raw_text)]
             pred = predict_tags[1:-1]
             raw_text = batch_raw_text[1:-1]
@@ -179,7 +212,7 @@ class medical_ner(object):
 
 if __name__ == "__main__":
     sentence = "抑郁症受遗传的影响。在抑郁症青少年中，约25%～33%的家庭有一级亲属的发病史，是没有抑郁症青少年家庭发病的2倍。"
-    my_pred = medical_ner()
+    my_pred = medical_ner(config)
     res = my_pred.predict_sentence(sentence)
     print("---")
     print(res)

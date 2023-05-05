@@ -1,5 +1,9 @@
 model/medical_re/*bin
 model/medical_re/*pkl
 model/medical_re/*
+model/medical_ner/*pkl
+model/medical_ner/*bin
+model/medical_cws/*bin
+model/medical_cws/*pkl
 __pycache__
 .idea
