@@ -69,23 +69,14 @@ medical_cws.py 医学分词(较少使用，可用jieba替代)
 
 **使用方法**
 
-配置参数在medical_re.py的class config里，首先在medical_re.py的class config里修改各个文件路径
+配置参数在medical_re.py的class config里，
+首先在medical_re.py的class config里修改各个文件路径
 
-- 训练
-
-```python
-import medical_re
-medical_re.load_schema()
-medical_re.run_train()
-```
-
-model_re/train_example.json 是训练文件示例
 
 - 使用
-
 ```
-训练： 参考run_train    函数
-提取， 参考extract_data 函数
+训练： 参考run_train    函数进行训练，其中model_re/train_example.json 是训练样本示例  
+关系提取， 参考extract_data 函数
 load_schema(PATH_SCHEMA)
 model4s, model4po = load_model( PATH_SCHEMA,  PATH_MODEL )
 text        = "右肺恶性肿瘤 患者男，63岁，因“右侧肺癌术后2年，气喘1周”入院。治疗过程：患者入院后完善相关检查，拟转本院南院行气管支架置入术"
@@ -141,12 +132,8 @@ print(res)
 
 ### 医学实体识别
 
-调整的参数和模型在ner_constant.py中
-
 **训练**
-
 python3 train_ner.py
-
 
 **使用进行提取**
 参考 medical_ner.py 中的predict_sentence函数
@@ -173,7 +160,6 @@ my_pred.predict_file("my_test.txt","outt.txt")
 **训练**
 python3 train_cws.py
 **使用示例**
-
 medical_cws 类提供两个接口测试函数
 - predict_sentence(sentence): 测试单个句子，返回:{"实体类别"：“实体”},不同实体以逗号隔开
 - predict_file(input_file, output_file): 测试整个文件
