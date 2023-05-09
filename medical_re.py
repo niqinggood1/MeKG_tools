@@ -265,14 +265,12 @@ def train(train_data_loader, model4s, model4po, optimizer):
 
 
 def extract_spoes(text,tokenizer,max_seq_len,num_p,id2predicate, model4s, model4po):
-    """
-    return: a list of many tuple of (s, p, o)
-    """
+    """  return: a list of many tuple of (s, p, o) """
     # 处理text
     with torch.no_grad():
-        tokenizer = config.tokenizer
+        tokenizer   = config.tokenizer
         max_seq_len = config.max_seq_len
-        token_ids = torch.tensor(
+        token_ids   = torch.tensor(
             tokenizer.encode(text, max_length=max_seq_len, pad_to_max_length=True, add_special_tokens=True) ).view(1, -1)
         if len(text) > max_seq_len - 2:
             text = text[:max_seq_len - 2]
@@ -396,7 +394,7 @@ def evaluate(data, is_print, tokenizer,max_seq_len,num_p,id2predicate,model4s, m
 
 def run_train( PATH_SCHEMA, PATH_TRAIN,PATH_MODEL,PATH_SAVE,learning_rate,tokenizer,max_seq_len,num_p,id2predicate ):
     load_schema(  PATH_SCHEMA  )
-    all_data        = load_data( PATH_TRAIN )
+    all_data       = load_data( PATH_TRAIN )
     random.shuffle(  all_data  )
 
     # 8:2划分训练集、验证集
@@ -480,7 +478,6 @@ def extract_data( PATH_SCHEMA,PATH_MODEL,tokenizer,max_seq_len,num_p,id2predicat
     model4s, model4po = load_model( PATH_SCHEMA,  PATH_MODEL )
     # text = "据报道称，新冠肺炎患者经常会发热、咳嗽，少部分患者会胸闷、=乏力，其病因包括: 1.自身免疫系统缺陷\n2.人传人。"
     text        = "右肺恶性肿瘤 患者男，63岁，因“右侧肺癌术后2年，气喘1周”入院。治疗过程：患者入院后完善相关检查，拟转本院南院行气管支架置入术"
-
     res         = get_triples(text,tokenizer,max_seq_len,num_p,id2predicate,\
                               model4s,model4po) #get_triples( text, config,model4s, model4po )
     print( res )
@@ -488,15 +485,15 @@ def extract_data( PATH_SCHEMA,PATH_MODEL,tokenizer,max_seq_len,num_p,id2predicat
 
 ### develop two function : one  predict,  another  train
 if __name__ == "__main__":
-    # ###运用关系抽取模型, 参考
-    # extract_data(   config.PATH_SCHEMA,\
-    #                 config.PATH_MODEL, \
-    #                 config.tokenizer, \
-    #                 config.max_seq_len,\
-    #                 config.num_p,       \
-    #                 config.id2predicate
-    #             )
-
+        ###运用关系抽取模型, 参考
+    extract_data(config.PATH_SCHEMA, \
+                 config.PATH_MODEL, \
+                 config.tokenizer, \
+                 config.max_seq_len, \
+                 config.num_p, \
+                 config.id2predicate
+                 )
+    exit(  )
     #训练，医疗关系抽取模型
     run_train( config.PATH_SCHEMA,   # 医学关系的json
                config.PATH_TRAIN,    # 训练数据
