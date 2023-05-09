@@ -361,14 +361,14 @@ class medical_ner(object):
 
 
 if __name__ == "__main__":
-    print(config.l2i_dic[''])
+    # print(config.l2i_dic[''])
 
     # model = medical_ner(config)
     # model.train()
 
 
-    # sentence = "抑郁症受遗传的影响。在抑郁症青少年中，约25%～33%的家庭有一级亲属的发病史，是没有抑郁症青少年家庭发病的2倍。"
-    # model = medical_ner(config)
-    # res = model.predict_sentence(sentence)
-    # print("---")
-    # print(res)
+    sentence = "抑郁症受遗传的影响。在抑郁症青少年中，约25%～33%的家庭有一级亲属的发病史，是没有抑郁症青少年家庭发病的2倍。"
+    model = medical_ner(config)
+    res = model.predict_sentence(sentence)
+    print("---")
+    print(res)

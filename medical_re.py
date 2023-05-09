@@ -485,15 +485,15 @@ def extract_data( text  ,PATH_SCHEMA,PATH_MODEL,tokenizer,max_seq_len,num_p,id2p
 
 ### develop two function : one  predict,  another  train
 if __name__ == "__main__":
-        ###运用关系抽取模型, 参考
+    #运用关系抽取模型, 参考
     text=  "右肺恶性肿瘤 患者男，63岁，因“右侧肺癌术后2年，气喘1周”入院。治疗过程：患者入院后完善相关检查，拟转本院南院行气管支架置入术",
-    extract_data(text,                 # text
+    extract_data(text,                 # 输入文本
                  config.PATH_SCHEMA,   # 医学关系的json
                  config.PATH_MODEL,    # 训练模型
                  config.tokenizer,     # tokenizer
                  config.max_seq_len,   #最大序列长度
-                 config.num_p,        # 医学关系数
-                 config.id2predicate  #id 转化字典
+                 config.num_p,         # 医学关系数
+                 config.id2predicate   #id 转化字典
                  )
     exit(  )
     #训练，医疗关系抽取模型
